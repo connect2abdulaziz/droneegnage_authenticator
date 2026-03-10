@@ -12,6 +12,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const WebSocketServer = require('ws').Server;
+const http = require('http');
 const https = require('https');
 
 let Me;
@@ -105,12 +106,24 @@ function fn_sendMessage(p_conn_guid, p_message) {
  */
 function fn_startWebSocketListener() {
     const app = express();
-    const options = {
-        key: fs.readFileSync(path.join(__dirname, "../" + global.m_serverconfig.m_configuration.ssl_key_file)),
-        cert: fs.readFileSync(path.join(__dirname, "../" + global.m_serverconfig.m_configuration.ssl_cert_file))
-    };
+    const v_useHttpOnly = process.env.USE_HTTP === '1';
 
-    const wserver = https.createServer(options, app);
+    let wserver;
+
+    if (v_useHttpOnly === true)
+    {
+        wserver = http.createServer(app);
+    }
+    else
+    {
+        const options = {
+            key: fs.readFileSync(path.join(__dirname, "../" + global.m_serverconfig.m_configuration.ssl_key_file)),
+            cert: fs.readFileSync(path.join(__dirname, "../" + global.m_serverconfig.m_configuration.ssl_cert_file))
+        };
+
+        wserver = https.createServer(options, app);
+    }
+
     wserver.listen(global.m_serverconfig.m_configuration.s2s_ws_listening_port, global.m_serverconfig.m_configuration.s2s_ws_listening_ip);
 
     const v_wss = new WebSocketServer({ server: wserver });
