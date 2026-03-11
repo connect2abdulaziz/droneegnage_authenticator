@@ -138,17 +138,18 @@ function fn_startWebSocketListener(existingHttpsServer) {
 
     // Legacy behavior: create a dedicated listener just for S2S WS.
     const app = express();
-    const useSSL = cfg.enable_SSL === true;
+    const keyPath = path.join(__dirname, "../" + (cfg.ssl_key_file || ""));
+    const certPath = path.join(__dirname, "../" + (cfg.ssl_cert_file || ""));
+    const useSSL = cfg.enable_SSL === true && fs.existsSync(keyPath) && fs.existsSync(certPath);
     let wserver;
 
     if (useSSL) {
         const options = {
-            key: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_key_file)),
-            cert: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_cert_file))
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
         };
         wserver = https.createServer(options, app);
     } else {
-        // No TLS – useful when running behind a TLS-terminating proxy like Railway
         wserver = http.createServer(app);
     }
 
