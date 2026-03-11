@@ -49,7 +49,9 @@ function fn_startExpressServer ()
 
 
     //settings
-    c_app.set('port', global.m_serverconfig.m_configuration.server_port);
+    const cfg = global.m_serverconfig.m_configuration;
+    const v_port = process.env.PORT ? parseInt(process.env.PORT, 10) : cfg.server_port;
+    c_app.set('port', v_port);
     c_app.set('views', v_path.join(__dirname, 'views'));
     
     //view engine & main template
@@ -210,7 +212,15 @@ function fn_start ()
 
     // load server configuration
     global.m_serverconfig.init(v_configFileName);
-  
+
+    // On platforms like Railway, override ports with PORT env if present
+    if (process.env.PORT) {
+        const p = parseInt(process.env.PORT, 10);
+        if (!Number.isNaN(p)) {
+            global.m_serverconfig.m_configuration.server_port = p;
+            global.m_serverconfig.m_configuration.s2s_ws_listening_port = p;
+        }
+    }
 
     // display info
     fn_displayInfo();
