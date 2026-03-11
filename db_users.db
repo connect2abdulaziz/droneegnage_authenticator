@@ -12,6 +12,7 @@
     "single@airgap.droneengae.com": {
       "sid": 1,
       "isadmin": true,
+      
       "prm": "0xffffffff",
       "pwd": "test"
     },

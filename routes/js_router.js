@@ -22,6 +22,15 @@ function fn_create(app) {
     
     app.use(v_router);
 
+    // Normalize trailing slash so /w/wl/ matches /w/wl (must run before route handlers)
+    app.use((req, res, next) => {
+        if (req.path.endsWith('/') && req.path.length > 1) {
+            const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+            req.url = req.path.slice(0, -1) + query;
+        }
+        next();
+    });
+
     // Health-check endpoint
     app.get(`${health_url}/health`, (req, res) => {
         res.status(200).json({
@@ -35,8 +44,10 @@ function fn_create(app) {
 
     app.use('/public', v_express.static('public'));
 
-    app.use(global.c_CONSTANTS.CONST_WEB_FUNCTION, require('./js_router_web'));
-    app.use(global.c_CONSTANTS.CONST_AGENT_FUNCTION, require('./js_router_agent'));
+    // Mount web and agent routes without extra prefix,
+    // because their own paths already include /w and /agent.
+    app.use(require('./js_router_web'));
+    app.use(require('./js_router_agent'));
 
     // Catch-all for unmatched routes
     app.use((v_req, v_res, next) => {
