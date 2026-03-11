@@ -4,9 +4,12 @@ doxygen_docs
 ssl/
 *.ignore
 logs/
-.vscode
 checks.json
 server.home.config
 
 
 
+config.bat
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat

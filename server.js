@@ -68,7 +68,6 @@ function fn_startExpressServer ()
     //router
     c_router.fn_create(c_app);
 
-    const cfg = global.m_serverconfig.m_configuration;
     const v_fs = require('fs');
     const keyPath = v_path.join(__dirname, cfg.ssl_key_file || '');
     const certPath = v_path.join(__dirname, cfg.ssl_cert_file || '');

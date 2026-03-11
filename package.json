@@ -13,7 +13,7 @@
   "description": "Andruav Authentication Server",
   "main": "andruav_auth.js",
   "scripts": {
-    "start": "node ./server.js"
+    "start": "node init && node ./server.js"
   },
   "bin": {
     "andruavauth": "server.js"
