@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const WebSocketServer = require('ws').Server;
 const https = require('https');
+const http = require('http');
 
 let Me;
 const m_ws = {}; // Stores connected WebSocket clients
@@ -135,14 +136,22 @@ function fn_startWebSocketListener(existingHttpsServer) {
         return;
     }
 
-    // Legacy behavior: create a dedicated HTTPS listener just for S2S WS.
+    // Legacy behavior: create a dedicated listener just for S2S WS.
     const app = express();
-    const options = {
-        key: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_key_file)),
-        cert: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_cert_file))
-    };
+    const useSSL = cfg.enable_SSL === true;
+    let wserver;
 
-    const wserver = https.createServer(options, app);
+    if (useSSL) {
+        const options = {
+            key: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_key_file)),
+            cert: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_cert_file))
+        };
+        wserver = https.createServer(options, app);
+    } else {
+        // No TLS – useful when running behind a TLS-terminating proxy like Railway
+        wserver = http.createServer(app);
+    }
+
     wserver.listen(cfg.s2s_ws_listening_port, cfg.s2s_ws_listening_ip);
 
     fn_attachWebSocketServer(wserver);

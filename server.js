@@ -66,20 +66,30 @@ function fn_startExpressServer ()
     //router
     c_router.fn_create(c_app);
 
-    let v_https = require('https');
-    let v_fs = require('fs');
-    console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_key_file + global.Colors.Reset);
-    let v_keyFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_key_file));
-    console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_cert_file + global.Colors.Reset);
-    let v_certFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_cert_file));
-    let v_options = {
-        key: v_keyFile,
-        cert: v_certFile
-    };
+    const useSSL = global.m_serverconfig.m_configuration.enable_SSL === true;
+    let v_server;
 
+    if (useSSL) {
+        const v_https = require('https');
+        const v_fs = require('fs');
+        console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_key_file + global.Colors.Reset);
+        const v_keyFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_key_file));
+        console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_cert_file + global.Colors.Reset);
+        const v_certFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_cert_file));
+        const v_options = {
+            key: v_keyFile,
+            cert: v_certFile
+        };
+
+        // HTTPS server
+        v_server = v_https.createServer(v_options, c_app);
+    } else {
+        // Plain HTTP server (no local cert files needed – useful on Railway)
+        const v_http = require('http');
+        v_server = v_http.createServer(c_app);
+    }
 
     // start listening
-    const v_server = v_https.createServer(v_options, c_app);
     v_server.listen(c_app.get('port'));
 
 
