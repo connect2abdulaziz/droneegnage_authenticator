@@ -38,8 +38,10 @@ const v_database_manager = require ("./js_database_manager");
 
 /**
  * Main function to start Authentication Service.
+ * @param {https.Server|null} existingHttpsServer - Optional HTTPS server to attach
+ *                                                 the S2S WebSocket listener to.
  */
-function fn_startServer ()
+function fn_startServer (existingHttpsServer)
 {
     console.log (global.Colors.Success + "[OK] Auth Server Started" + global.Colors.Reset);
 
@@ -55,7 +57,7 @@ function fn_startServer ()
 
 
     // start web socket server
-    v_commServerManagerServer.fn_startServer();
+    v_commServerManagerServer.fn_startServer(existingHttpsServer || null);
 }
 
 

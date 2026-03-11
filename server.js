@@ -49,8 +49,7 @@ function fn_startExpressServer ()
 
 
     //settings
-    const v_port = process.env.PORT || global.m_serverconfig.m_configuration.server_port;
-    c_app.set('port', v_port);
+    c_app.set('port', global.m_serverconfig.m_configuration.server_port);
     c_app.set('views', v_path.join(__dirname, 'views'));
     
     //view engine & main template
@@ -67,33 +66,26 @@ function fn_startExpressServer ()
     //router
     c_router.fn_create(c_app);
 
-    const v_http = require('http');
-    const v_https = require('https');
-    const v_fs = require('fs');
+    let v_https = require('https');
+    let v_fs = require('fs');
+    console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_key_file + global.Colors.Reset);
+    let v_keyFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_key_file));
+    console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_cert_file + global.Colors.Reset);
+    let v_certFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_cert_file));
+    let v_options = {
+        key: v_keyFile,
+        cert: v_certFile
+    };
 
-    const v_useHttpOnly = process.env.USE_HTTP === '1';
 
-    if (v_useHttpOnly === true)
-    {
-        v_http.createServer(c_app).listen(c_app.get('port'));
-    }
-    else
-    {
-        console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_key_file + global.Colors.Reset);
-        let v_keyFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_key_file));
-        console.log (global.Colors.Log + "READING " + global.m_serverconfig.m_configuration.ssl_cert_file + global.Colors.Reset);
-        let v_certFile = v_fs.readFileSync(v_path.join(__dirname, global.m_serverconfig.m_configuration.ssl_cert_file));
-        let v_options = {
-            key: v_keyFile,
-            cert: v_certFile
-        };
-
-        v_https.createServer(v_options, c_app).listen(c_app.get('port'));
-    }
+    // start listening
+    const v_server = v_https.createServer(v_options, c_app);
+    v_server.listen(c_app.get('port'));
 
 
     console.log (global.Colors.Success + "[OK] Web Server Started" + global.Colors.Reset);
 
+    return v_server;
 }
 
 
@@ -213,18 +205,16 @@ function fn_start ()
     // display info
     fn_displayInfo();
 
-    
-    // start auth server 
-    global.m_authServer.fn_startServer ();
+    // load express server and get HTTPS instance
+	const v_httpsServer = fn_startExpressServer();
 
-    // load express server
-	fn_startExpressServer();
+    // start auth server and attach S2S WebSocket listener
+    global.m_authServer.fn_startServer(v_httpsServer);
 
 }
 
 
 fn_start();
-
 
 
 

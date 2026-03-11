@@ -12,11 +12,20 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const WebSocketServer = require('ws').Server;
-const http = require('http');
 const https = require('https');
 
 let Me;
 const m_ws = {}; // Stores connected WebSocket clients
+
+/**
+ * Attaches a WebSocket server to an existing HTTPS server instance.
+ * This allows sharing the same port between HTTP and S2S WebSocket traffic.
+ * @param {https.Server} wserver - Existing HTTPS server.
+ */
+function fn_attachWebSocketServer(wserver) {
+    const v_wss = new WebSocketServer({ server: wserver });
+    v_wss.on('connection', fn_onConnect_Handler);
+}
 
 /**
  * Called when a communication server connects using WebSocket to this AuthServer.
@@ -103,42 +112,59 @@ function fn_sendMessage(p_conn_guid, p_message) {
 /**
  * Starts the WebSocket server that listens to Communication Servers.
  * This is a server-server connection.
+ *
+ * If an existing HTTPS server instance is provided **and** the
+ * `s2s_ws_listening_port` equals `server_port`, the WebSocket
+ * server is attached to that instance so both HTTP and WS share
+ * the same external port (useful for platforms like Railway).
+ *
+ * Otherwise, a dedicated HTTPS server is created on
+ * `s2s_ws_listening_port` (original legacy behavior).
+ *
+ * @param {https.Server|null} existingHttpsServer - Optional existing HTTPS server.
  */
-function fn_startWebSocketListener() {
+function fn_startWebSocketListener(existingHttpsServer) {
+    const cfg = global.m_serverconfig.m_configuration || {};
+    const sharePort =
+        existingHttpsServer &&
+        Number(cfg.s2s_ws_listening_port) === Number(cfg.server_port);
+
+    if (sharePort) {
+        // Attach WebSocket server to the already-listening HTTPS server.
+        fn_attachWebSocketServer(existingHttpsServer);
+        return;
+    }
+
+    // Legacy behavior: create a dedicated HTTPS listener just for S2S WS.
     const app = express();
-    const v_useHttpOnly = process.env.USE_HTTP === '1';
+    const options = {
+        key: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_key_file)),
+        cert: fs.readFileSync(path.join(__dirname, "../" + cfg.ssl_cert_file))
+    };
 
-    let wserver;
+    const wserver = https.createServer(options, app);
+    wserver.listen(cfg.s2s_ws_listening_port, cfg.s2s_ws_listening_ip);
 
-    if (v_useHttpOnly === true)
-    {
-        wserver = http.createServer(app);
-    }
-    else
-    {
-        const options = {
-            key: fs.readFileSync(path.join(__dirname, "../" + global.m_serverconfig.m_configuration.ssl_key_file)),
-            cert: fs.readFileSync(path.join(__dirname, "../" + global.m_serverconfig.m_configuration.ssl_cert_file))
-        };
-
-        wserver = https.createServer(options, app);
-    }
-
-    wserver.listen(global.m_serverconfig.m_configuration.s2s_ws_listening_port, global.m_serverconfig.m_configuration.s2s_ws_listening_ip);
-
-    const v_wss = new WebSocketServer({ server: wserver });
-    v_wss.on('connection', fn_onConnect_Handler);
+    fn_attachWebSocketServer(wserver);
 }
 
 /**
  * Starts the server.
+ * @param {https.Server|null} existingHttpsServer - Optional existing HTTPS server
+ *                                                 to attach WebSocket listener to.
  */
-function fn_startServer() {
+function fn_startServer(existingHttpsServer) {
     Me = this;
 
-    console.log(global.Colors.Success + "[OK] Comm Server Manager Started at port " + global.m_serverconfig.m_configuration.s2s_ws_listening_port + global.Colors.Reset);
+    const cfg = global.m_serverconfig.m_configuration || {};
+    console.log(
+        global.Colors.Success +
+            "[OK] Comm Server Manager Started at port " +
+            cfg.s2s_ws_listening_port +
+            global.Colors.Reset
+    );
 
-    fn_startWebSocketListener();
+    fn_startWebSocketListener(existingHttpsServer || null);
 }
 
 // Export functions
